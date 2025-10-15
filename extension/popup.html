@@ -5,33 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>CopiMon</title>
     <style>
-      body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 10px; width: 340px; }
-      h1 { font-size: 14px; margin: 0 0 8px; color: #333; }
-      .row { display: flex; gap: 6px; margin-bottom: 8px; }
-      input { flex: 1; padding: 6px; }
-      button { padding: 6px 10px; }
-      .item { border: 1px solid #eee; border-radius: 6px; padding: 8px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
-      .actions { display: flex; gap: 6px; margin-top: 6px; }
-      .muted { color: #777; font-size: 12px; }
-      #items { max-height: 420px; overflow: auto; }
+      :root { --brand:#3b82f6; --bg:#f8fafc; --text:#0f172a; --muted:#64748b; --card:#ffffff; --border:#e2e8f0; --success:#16a34a; --warn:#f59e0b; --danger:#ef4444; }
+      body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 0; width: 360px; background: var(--bg); color: var(--text); }
+      header { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1; }
+      h1 { font-size: 14px; margin: 0; color: var(--text); }
+      .toolbar { display:flex; gap:6px; }
+      .row { display: flex; gap: 6px; margin: 10px 12px; }
+      input { flex: 1; padding: 8px; border:1px solid var(--border); border-radius:6px; background: #fff; }
+      button { padding: 6px 10px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; }
+      .btn-primary { background: var(--brand); color: white; border-color: var(--brand); }
+      .btn-primary:hover { filter: brightness(0.95); }
+      .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
+      .badge.connected { background:#dcfce7; color:#166534; }
+      .badge.connecting { background:#fff7ed; color:#92400e; }
+      .badge.disconnected { background:#fee2e2; color:#991b1b; }
+      .section { padding: 0 12px 10px; }
+      .item { border: 1px solid var(--border); background:var(--card); border-radius: 8px; padding: 10px; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+      .item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+      .actions { display: flex; gap: 6px; margin-top: 8px; }
+      .muted { color: var(--muted); font-size: 12px; }
+      #items { max-height: 380px; overflow: auto; }
+      #logs { background: #0b1220; color:#cbd5e1; padding:8px; border-radius:6px; }
     </style>
   </head>
   <body>
-    <h1>CopiMon</h1>
+    <header>
+      <h1>CopiMon</h1>
+      <div class="toolbar">
+        <button id="refresh" title="Refresh" class="btn-primary">Refresh</button>
+      </div>
+    </header>
     <div class="row">
       <input id="serverUrl" placeholder="Server URL" />
       <input id="roomId" placeholder="Room" />
-      <button id="save">Save</button>
+      <button id="save" class="btn-primary">Save</button>
     </div>
-    <div id="status" class="muted"></div>
+    <div class="section">
+      <div id="status" class="muted"></div>
+    </div>
     <div class="row">
       <button id="requestClipboard">Request Clipboard Permission</button>
       <button id="clearLogs">Clear Logs</button>
     </div>
-    <div class="muted" id="wsState"></div>
-    <div id="items"></div>
-    <h1>Logs</h1>
-    <div id="logs" class="muted" style="max-height:160px; overflow:auto; white-space:pre-wrap;"></div>
+    <div class="section"><span class="muted">Status: </span><span id="wsState" class="badge disconnected">WS: unknown</span></div>
+    <div id="items" class="section"></div>
+    <div class="section"><h1>Logs</h1></div>
+    <div id="logs" class="section" style="max-height:160px; overflow:auto; white-space:pre-wrap;"></div>
     <script src="popup.js"></script>
   </body>
   </html>

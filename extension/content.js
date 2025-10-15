@@ -1,6 +1,24 @@
 // Content script: capture copy and open overlay on Ctrl+V
 
 let overlayOpen = false;
+let overlayRefreshTimer;
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '16px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.background = 'rgba(0,0,0,0.8)';
+  toast.style.color = 'white';
+  toast.style.padding = '8px 12px';
+  toast.style.borderRadius = '6px';
+  toast.style.zIndex = '2147483647';
+  toast.style.fontFamily = 'system-ui, Arial, sans-serif';
+  document.documentElement.appendChild(toast);
+  setTimeout(() => toast.remove(), 1500);
+}
 
 function createOverlay(items) {
   const overlay = document.createElement('div');
@@ -31,6 +49,7 @@ function createOverlay(items) {
   panel.appendChild(title);
 
   const list = document.createElement('div');
+  list.id = 'copimon-list';
   items.forEach((item, idx) => {
     const row = document.createElement('div');
     row.tabIndex = 0;
@@ -58,6 +77,10 @@ function closeOverlay() {
   const el = document.getElementById('copimon-overlay');
   if (el) el.remove();
   overlayOpen = false;
+  if (overlayRefreshTimer) {
+    clearInterval(overlayRefreshTimer);
+    overlayRefreshTimer = undefined;
+  }
 }
 
 async function openOverlay() {
@@ -67,6 +90,29 @@ async function openOverlay() {
     const overlay = createOverlay(items || []);
     document.documentElement.appendChild(overlay);
   });
+  // Auto-refresh overlay list every 2s
+  overlayRefreshTimer = setInterval(() => {
+    chrome.runtime.sendMessage({ type: 'copimon.getItems' }, ({ items }) => {
+      const list = document.getElementById('copimon-list');
+      if (!list || !Array.isArray(items)) return;
+      list.innerHTML = '';
+      items.forEach((item) => {
+        const row = document.createElement('div');
+        row.tabIndex = 0;
+        row.style.padding = '10px';
+        row.style.border = '1px solid #eee';
+        row.style.borderRadius = '6px';
+        row.style.marginBottom = '8px';
+        row.style.cursor = 'pointer';
+        row.style.whiteSpace = 'pre-wrap';
+        row.style.wordBreak = 'break-word';
+        row.textContent = item.text;
+        row.addEventListener('click', () => pick(item.text));
+        row.addEventListener('keydown', (e) => { if (e.key === 'Enter') pick(item.text); });
+        list.appendChild(row);
+      });
+    });
+  }, 2000);
 }
 
 function writeToClipboardWithFallback(text) {
@@ -112,6 +158,7 @@ function pick(text) {
     writeToClipboardWithFallback(text);
   }
   closeOverlay();
+  showToast('Pasted');
 }
 
 // Capture copy events in page
@@ -122,16 +169,16 @@ document.addEventListener('copy', () => {
   } catch {}
   if (text) {
     chrome.runtime.sendMessage({ type: 'copimon.copy', text });
+    showToast('Copied to CopiMon');
   }
 }, true);
 
-// Shortcut: Ctrl/Cmd + Shift + V opens overlay (does NOT override normal Ctrl/Cmd+V)
+// On Ctrl/Cmd+V, open overlay but do NOT block default paste behavior
 document.addEventListener('keydown', (e) => {
   const isMac = navigator.platform.includes('Mac');
   const mod = isMac ? e.metaKey : e.ctrlKey;
-  if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v') {
-    e.preventDefault();
-    e.stopPropagation();
+  if (mod && !e.altKey && e.key.toLowerCase() === 'v') {
+    // No preventDefault here; allow normal paste
     openOverlay();
   }
 });
@@ -151,12 +198,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         active.setSelectionRange?.(pos, pos);
         active.dispatchEvent(new Event('input', { bubbles: true }));
         sendResponse({ ok: true });
+        showToast('Pasted');
         return true;
       } catch {}
     }
     // Fallback: write to clipboard
     writeToClipboardWithFallback(msg.text);
     sendResponse({ ok: true, clipboard: true });
+    showToast('Copied');
     return true;
   }
 });

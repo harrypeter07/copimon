@@ -47,7 +47,10 @@ async function renderStatus() {
   });
   const localStatus = (await getLocal({ copiMonStatus: { state: 'unknown' } })).copiMonStatus;
   const s = bgStatus || localStatus || { state: 'unknown' };
-  document.getElementById('wsState').textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
+  const wsState = document.getElementById('wsState');
+  wsState.textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
+  wsState.classList.remove('connected', 'connecting', 'disconnected');
+  wsState.classList.add(s.state);
 }
 
 async function renderLogs() {
@@ -88,6 +91,12 @@ document.getElementById('save').addEventListener('click', async () => {
   await setSync({ serverUrl, roomId });
   document.getElementById('status').textContent = 'Saved';
   setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
+});
+
+document.getElementById('refresh').addEventListener('click', async () => {
+  await renderItems();
+  await renderStatus();
+  await renderLogs();
 });
 
 document.getElementById('requestClipboard').addEventListener('click', async () => {
