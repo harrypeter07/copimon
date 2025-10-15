@@ -87,6 +87,24 @@ Manifest includes host permissions for `http://*/*` and `https://*/*` and `http:
 - For production, place the server behind HTTPS/WSS and enable CORS for your extension origin(s).
 - Consider persistence (Redis/DB) and auth in the future if needed.
 
+### Deploy to Render (free plan)
+
+1. Push this repository to GitHub.
+2. In Render, create a new Web Service:
+   - Root directory: `server/`
+   - Build command: `npm install`
+   - Start command: `node index.js`
+   - Environment: Node 18
+   - Environment variables:
+     - `PORT`: `10000` (Render provides PORT; our server reads it)
+     - `COPIMON_DB`: `copimon.sqlite`
+3. After deploy, note your service URL, e.g. `https://copimon-server.onrender.com`.
+4. In the extension Options page, set Server URL to your Render URL.
+
+Notes:
+- Render free instances may spin down when idle; the extension will reconnect automatically.
+- Ensure the Render URL is allowed by extension host permissions (manifest already includes `https://*/*`).
+
 ## API summary
 
 - `GET /rooms/:roomId/history`
