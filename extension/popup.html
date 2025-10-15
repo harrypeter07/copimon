@@ -52,7 +52,13 @@
       <button id="requestClipboard">Request Clipboard Permission</button>
       <button id="clearLogs">Clear Logs</button>
     </div>
-    <div class="section"><span class="muted">Status: </span><span id="wsState" class="badge disconnected">WS: unknown</span></div>
+    <div class="section" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <span class="muted">Status:</span>
+      <span id="wsState" class="badge disconnected">WS: unknown</span>
+      <span id="permWrite" class="badge disconnected">clipboard-write: unknown</span>
+      <span id="permRead" class="badge disconnected">clipboard-read: unknown</span>
+      <span id="contentState" class="badge disconnected">content: unknown</span>
+    </div>
     <div id="items" class="section"></div>
     <div class="section"><h1>Logs</h1></div>
     <div id="logs" class="section" style="max-height:160px; overflow:auto; white-space:pre-wrap;"></div>

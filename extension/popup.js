@@ -54,6 +54,42 @@ async function renderStatus() {
   wsState.textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
   wsState.classList.remove('connected', 'connecting', 'disconnected');
   wsState.classList.add(s.state);
+
+  // Permissions
+  const permWriteEl = document.getElementById('permWrite');
+  const permReadEl = document.getElementById('permRead');
+  try {
+    const write = await navigator.permissions.query({ name: 'clipboard-write' });
+    permWriteEl.textContent = `clipboard-write: ${write.state}`;
+    permWriteEl.className = `badge ${write.state === 'granted' ? 'connected' : write.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+  } catch {
+    permWriteEl.textContent = 'clipboard-write: n/a';
+    permWriteEl.className = 'badge disconnected';
+  }
+  try {
+    const read = await navigator.permissions.query({ name: 'clipboard-read' });
+    permReadEl.textContent = `clipboard-read: ${read.state}`;
+    permReadEl.className = `badge ${read.state === 'granted' ? 'connected' : read.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+  } catch {
+    permReadEl.textContent = 'clipboard-read: n/a';
+    permReadEl.className = 'badge disconnected';
+  }
+
+  // Check if content script is active on current tab
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, { type: 'copimon.ping' });
+      document.getElementById('contentState').textContent = 'content: active';
+      document.getElementById('contentState').className = 'badge connected';
+    } else {
+      document.getElementById('contentState').textContent = 'content: no-tab';
+      document.getElementById('contentState').className = 'badge disconnected';
+    }
+  } catch {
+    document.getElementById('contentState').textContent = 'content: inactive';
+    document.getElementById('contentState').className = 'badge disconnected';
+  }
 }
 
 async function renderLogs() {

@@ -3,6 +3,7 @@
 let overlayOpen = false;
 let overlayRefreshTimer;
 let useCtrlVOverlay = false;
+let lastSent = { text: '', at: 0 };
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -193,6 +194,18 @@ document.addEventListener('copy', () => {
   }
 }, true);
 
+// Also capture cuts
+document.addEventListener('cut', () => {
+  let text = '';
+  try {
+    text = document.getSelection()?.toString() || '';
+  } catch {}
+  if (text) {
+    safeSendMessage({ type: 'copimon.copy', text });
+    showToast('Copied to CopiMon');
+  }
+}, true);
+
 // On Ctrl/Cmd+V, open overlay but do NOT block default paste behavior
 document.addEventListener('keydown', (e) => {
   const isMac = navigator.platform.includes('Mac');
@@ -204,7 +217,26 @@ document.addEventListener('keydown', (e) => {
       openOverlay();
     }
   }
+  // Try to capture actual clipboard contents on Ctrl/Cmd+C
+  if (mod && !e.altKey && e.key.toLowerCase() === 'c') {
+    // Defer read until after the copy completes in the event loop
+    setTimeout(async () => {
+      try {
+        const text = (await navigator.clipboard?.readText?.()) || '';
+        if (text && (text !== lastSent.text || Date.now() - lastSent.at > 1000)) {
+          lastSent = { text, at: Date.now() };
+          safeSendMessage({ type: 'copimon.copy', text });
+          // toast suppressed here to avoid double toasts with copy handler
+        }
+      } catch {}
+    }, 0);
+  }
 });
+
+// Show a toast on paste as well to indicate action
+document.addEventListener('paste', () => {
+  showToast('Pasted');
+}, true);
 
 // Handle paste requests from popup
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -229,6 +261,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     writeToClipboardWithFallback(msg.text);
     sendResponse({ ok: true, clipboard: true });
     showToast('Copied');
+    return true;
+  } else if (msg && msg.type === 'copimon.ping') {
+    sendResponse({ ok: true });
     return true;
   }
 });
