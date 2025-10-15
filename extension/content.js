@@ -139,4 +139,29 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Handle paste requests from popup
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg && msg.type === 'copimon.pasteText' && typeof msg.text === 'string') {
+    const active = document.activeElement;
+    const isEditable = active && (active.isContentEditable || ['INPUT', 'TEXTAREA'].includes(active.tagName));
+    if (isEditable) {
+      const start = active.selectionStart ?? active.selectionEnd ?? active.value?.length ?? 0;
+      const end = active.selectionEnd ?? start;
+      try {
+        const val = active.value ?? '';
+        active.value = val.slice(0, start) + msg.text + val.slice(end);
+        const pos = start + msg.text.length;
+        active.setSelectionRange?.(pos, pos);
+        active.dispatchEvent(new Event('input', { bubbles: true }));
+        sendResponse({ ok: true });
+        return true;
+      } catch {}
+    }
+    // Fallback: write to clipboard
+    writeToClipboardWithFallback(msg.text);
+    sendResponse({ ok: true, clipboard: true });
+    return true;
+  }
+});
+
 

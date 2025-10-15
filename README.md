@@ -60,6 +60,7 @@ Note: History is persisted in SQLite; delete the DB file to reset.
 4. Open extension "Details" → "Extension options" and set:
    - Server URL: `https://copimon.onrender.com` (or your deployed origin)
    - Room ID: e.g. `default` or a shared string among users
+5. Click the extension icon to open the popup UI. You can adjust URL/room there and see recent items with Paste/Copy buttons.
 
 ### Permissions
 
