@@ -43,13 +43,14 @@ npm install
 npm start
 ```
 - Server listens on `http://localhost:3001` by default.
+- Persistence: Uses SQLite (`copimon.sqlite` in the `server/` directory by default). Override path with `COPIMON_DB` env var.
 - Endpoints:
   - `GET /health` → `{ ok: true }`
   - `GET /rooms/:roomId/history` → `{ items: [...] }`
   - `POST /rooms/:roomId/clipboard` body `{ text }` → `{ ok, item }`
   - WebSocket: `ws://localhost:3001/ws?roomId=ROOM`
 
-Note: Data is in-memory only; restart clears history.
+Note: History is persisted in SQLite; delete the DB file to reset.
 
 ## Load the Chrome extension (MV3)
 
@@ -69,6 +70,11 @@ Manifest includes host permissions for `http://*/*` and `https://*/*` and `http:
 - Copy text on any page (Ctrl+C / Cmd+C). It uploads to the server automatically.
 - On any client in the same room, press Ctrl/Cmd+V to open the overlay of recent items; click to paste.
 - If no editable field is focused, the chosen text is written to the clipboard.
+
+### Clipboard permissions and fallbacks
+- When inserting into inputs/textareas, no special permission is needed.
+- If inserting is not possible, the extension writes to the clipboard. It tries the async Clipboard API first and falls back to `document.execCommand('copy')` during a user gesture (click/Enter in overlay), which is widely supported.
+- Some pages may restrict clipboard access; the fallback path is handled automatically by the content script.
 
 ## Configuration & storage
 

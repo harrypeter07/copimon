@@ -69,6 +69,30 @@ async function openOverlay() {
   });
 }
 
+function writeToClipboardWithFallback(text) {
+  // Prefer async clipboard API when available and permitted
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => {
+      // Fallback to execCommand
+      fallbackExecCopy(text);
+    });
+  }
+  fallbackExecCopy(text);
+}
+
+function fallbackExecCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '-1000px';
+  ta.style.left = '-1000px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch {}
+  ta.remove();
+}
+
 function pick(text) {
   // Paste into focused element if possible
   const active = document.activeElement;
@@ -84,8 +108,8 @@ function pick(text) {
       active.dispatchEvent(new Event('input', { bubbles: true }));
     } catch {}
   } else {
-    // Fallback: copy to system clipboard
-    navigator.clipboard?.writeText(text).catch(() => {});
+    // Fallback: copy to system clipboard (user gesture from click/Enter)
+    writeToClipboardWithFallback(text);
   }
   closeOverlay();
 }

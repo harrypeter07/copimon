@@ -78,11 +78,14 @@ async function pushClipboardText(text) {
 chrome.runtime.onInstalled.addListener(async () => {
   const { serverUrl, roomId } = await getConfig();
   connectWS(serverUrl, roomId);
+  // Warm up clipboard permission if possible by querying state
+  try { await navigator.permissions?.query?.({ name: 'clipboard-write' }); } catch {}
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   const { serverUrl, roomId } = await getConfig();
   connectWS(serverUrl, roomId);
+  try { await navigator.permissions?.query?.({ name: 'clipboard-write' }); } catch {}
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
