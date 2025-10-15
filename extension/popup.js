@@ -59,7 +59,18 @@ async function renderStatus() {
 async function renderLogs() {
   const { copiMonLogs = [] } = await getLocal({ copiMonLogs: [] });
   const logsEl = document.getElementById('logs');
-  logsEl.textContent = copiMonLogs.map(l => new Date(l.ts).toLocaleTimeString() + ' ' + l.message).join('\n');
+  const backgroundLogs = copiMonLogs.map(l => new Date(l.ts).toLocaleTimeString() + ' [ext] ' + l.message).join('\n');
+  // Try server logs
+  let serverLogs = '';
+  try {
+    const cfg = await getSync(DEFAULTS);
+    const res = await fetch(`${cfg.serverUrl}/logs`);
+    if (res.ok) {
+      const data = await res.json();
+      serverLogs = (data.logs || []).map(l => new Date(l.ts).toLocaleTimeString() + ' [srv] ' + l.level + ' ' + l.message + (l.meta ? ' ' + JSON.stringify(l.meta) : '')).join('\n');
+    }
+  } catch {}
+  logsEl.textContent = [serverLogs, backgroundLogs].filter(Boolean).join('\n');
 }
 
 async function pasteIntoActiveTab(text) {

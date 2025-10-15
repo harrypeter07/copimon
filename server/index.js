@@ -119,9 +119,12 @@ wss.on('connection', (ws, request) => {
   const roomId = url.searchParams.get('roomId') || 'default';
   const room = getOrCreateRoom(roomId);
   room.sockets.add(ws);
+  try { if (typeof log === 'function') log('info', 'ws_open', { roomId, sockets: room.sockets.size }); } catch {}
 
   // Send initial snapshot
-  ws.send(JSON.stringify({ type: 'snapshot', roomId, items: getLatest(roomId, 100) }));
+  const _items = getLatest(roomId, 100);
+  ws.send(JSON.stringify({ type: 'snapshot', roomId, items: _items }));
+  try { if (typeof log === 'function') log('info', 'ws_snapshot', { roomId, count: _items.length }); } catch {}
 
   ws.on('message', (data) => {
     try {
@@ -129,6 +132,7 @@ wss.on('connection', (ws, request) => {
       if (msg.type === 'new_item' && typeof msg.text === 'string' && msg.text.length > 0) {
         const item = createItem(msg.text);
         saveItem(roomId, item);
+        try { if (typeof log === 'function') log('info', 'new_item_ws', { roomId, id: item.id, len: item.text.length }); } catch {}
         broadcastToRoom(roomId, { type: 'new_item', roomId, item });
       }
     } catch {}
@@ -136,6 +140,7 @@ wss.on('connection', (ws, request) => {
 
   ws.on('close', () => {
     room.sockets.delete(ws);
+    try { if (typeof log === 'function') log('info', 'ws_close', { roomId, sockets: room.sockets.size }); } catch {}
   });
 });
 
