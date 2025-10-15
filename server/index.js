@@ -11,6 +11,14 @@ app.use(express.json({ limit: '200kb' }));
 
 // In-memory sockets per room (history is persisted in SQLite)
 const rooms = new Map();
+// Ephemeral server logs for popup consumption
+const recentLogs = [];
+function log(level, message, meta) {
+  const entry = { ts: Date.now(), level, message, meta: meta || null };
+  recentLogs.unshift(entry);
+  if (recentLogs.length > 500) recentLogs.length = 500;
+  try { console.log(`[${new Date(entry.ts).toISOString()}] [${level}] ${message}`, meta || ''); } catch {}
+}
 
 function getOrCreateRoom(roomId) {
   if (!rooms.has(roomId)) {
@@ -26,6 +34,9 @@ function broadcastToRoom(roomId, payload) {
     if (ws.readyState === 1) {
       ws.send(JSON.stringify(payload));
     }
+  }
+  if (payload?.type === 'new_item') {
+    log('info', 'broadcast', { roomId, id: payload.item?.id });
   }
 }
 
@@ -59,6 +70,7 @@ function getLatest(roomId, limit = 100) {
 
 // REST endpoints
 app.get('/health', (_req, res) => {
+  log('info', 'health');
   res.json({ ok: true });
 });
 
@@ -66,6 +78,7 @@ app.get('/health', (_req, res) => {
 app.get('/rooms/:roomId/history', (req, res) => {
   const { roomId } = req.params;
   const items = getLatest(roomId, 100);
+  log('info', 'history', { roomId, count: items.length });
   res.json({ items });
 });
 
@@ -78,6 +91,7 @@ app.post('/rooms/:roomId/clipboard', (req, res) => {
   }
   const item = createItem(text);
   saveItem(roomId, item);
+  log('info', 'new_item_rest', { roomId, id: item.id, len: item.text.length });
   broadcastToRoom(roomId, { type: 'new_item', roomId, item });
   res.json({ ok: true, item });
 });

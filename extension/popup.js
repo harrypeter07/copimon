@@ -18,6 +18,9 @@ async function load() {
   renderItems();
   renderStatus();
   renderLogs();
+  // load ctrl+v preference
+  const { useCtrlVOverlay = false } = await getSync({ useCtrlVOverlay: false });
+  document.getElementById('useCtrlVOverlay').checked = !!useCtrlVOverlay;
 }
 
 async function renderItems() {
@@ -91,6 +94,10 @@ document.getElementById('save').addEventListener('click', async () => {
   await setSync({ serverUrl, roomId });
   document.getElementById('status').textContent = 'Saved';
   setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
+});
+
+document.getElementById('useCtrlVOverlay').addEventListener('change', async (e) => {
+  await setSync({ useCtrlVOverlay: !!e.target.checked });
 });
 
 document.getElementById('refresh').addEventListener('click', async () => {
