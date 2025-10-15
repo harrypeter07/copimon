@@ -2,6 +2,7 @@
 
 let overlayOpen = false;
 let overlayRefreshTimer;
+let useCtrlVOverlay = false;
 
 function showToast(message) {
   const toast = document.createElement('div');
@@ -197,8 +198,11 @@ document.addEventListener('keydown', (e) => {
   const isMac = navigator.platform.includes('Mac');
   const mod = isMac ? e.metaKey : e.ctrlKey;
   if (mod && !e.altKey && e.key.toLowerCase() === 'v') {
-    // No preventDefault here; allow normal paste
-    openOverlay();
+    // Open overlay if user pressed Shift OR if setting is enabled
+    if (e.shiftKey || useCtrlVOverlay) {
+      // Do not prevent default; allow native paste
+      openOverlay();
+    }
   }
 });
 
@@ -228,5 +232,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 });
+
+// Load user preference for Ctrl+V overlay
+try {
+  chrome.storage.sync.get({ useCtrlVOverlay: false }, (cfg) => {
+    useCtrlVOverlay = !!cfg.useCtrlVOverlay;
+  });
+} catch {}
+
+// React to changes from popup/options
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.useCtrlVOverlay) {
+      useCtrlVOverlay = !!changes.useCtrlVOverlay.newValue;
+    }
+  });
+} catch {}
 
 
