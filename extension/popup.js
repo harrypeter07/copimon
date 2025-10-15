@@ -16,6 +16,8 @@ async function load() {
   document.getElementById('serverUrl').value = cfg.serverUrl;
   document.getElementById('roomId').value = cfg.roomId;
   renderItems();
+  renderStatus();
+  renderLogs();
 }
 
 async function renderItems() {
@@ -37,6 +39,17 @@ async function renderItems() {
     actions.children[1].addEventListener('click', () => copyToClipboard(item.text));
     itemsEl.append(wrap);
   }
+}
+
+async function renderStatus() {
+  const { copiMonStatus = { state: 'unknown' } } = await getLocal({ copiMonStatus: { state: 'unknown' } });
+  document.getElementById('wsState').textContent = `WS: ${copiMonStatus.state}${copiMonStatus.lastError ? ' — ' + copiMonStatus.lastError : ''}`;
+}
+
+async function renderLogs() {
+  const { copiMonLogs = [] } = await getLocal({ copiMonLogs: [] });
+  const logsEl = document.getElementById('logs');
+  logsEl.textContent = copiMonLogs.map(l => new Date(l.ts).toLocaleTimeString() + ' ' + l.message).join('\n');
 }
 
 async function pasteIntoActiveTab(text) {
@@ -73,9 +86,29 @@ document.getElementById('save').addEventListener('click', async () => {
   setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
 });
 
+document.getElementById('requestClipboard').addEventListener('click', async () => {
+  try {
+    await navigator.permissions?.query?.({ name: 'clipboard-write' });
+    await navigator.clipboard?.writeText(''); // attempt a no-op write to prompt if needed
+    document.getElementById('status').textContent = 'Clipboard permission requested';
+  } catch {
+    document.getElementById('status').textContent = 'Clipboard request failed';
+  }
+  setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
+});
+
+document.getElementById('clearLogs').addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'copimon.clearLogs' });
+  renderLogs();
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.copiMonItems) {
     renderItems();
+  } else if (area === 'local' && changes.copiMonLogs) {
+    renderLogs();
+  } else if (area === 'local' && changes.copiMonStatus) {
+    renderStatus();
   }
 });
 
