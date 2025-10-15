@@ -1,7 +1,7 @@
 // Minimal background: manages WS connection per room and shares history via chrome.storage
 
 const DEFAULTS = {
-  serverUrl: 'http://localhost:3001',
+  serverUrl: 'https://copimon.onrender.com',
   roomId: 'default',
 };
 

@@ -27,7 +27,7 @@
     <button id="save">Save</button>
 
     <script>
-      const DEFAULTS = { serverUrl: 'http://localhost:3001', roomId: 'default' };
+      const DEFAULTS = { serverUrl: 'https://copimon.onrender.com', roomId: 'default' };
 
       function getSync(keys) { return new Promise(r => chrome.storage.sync.get(keys, r)); }
       function setSync(obj) { return new Promise(r => chrome.storage.sync.set(obj, r)); }

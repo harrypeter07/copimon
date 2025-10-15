@@ -58,7 +58,7 @@ Note: History is persisted in SQLite; delete the DB file to reset.
 2. Enable Developer mode (top-right).
 3. Click "Load unpacked" → select the `extension/` folder.
 4. Open extension "Details" → "Extension options" and set:
-   - Server URL: `http://localhost:3001` (or your deployed origin)
+   - Server URL: `https://copimon.onrender.com` (or your deployed origin)
    - Room ID: e.g. `default` or a shared string among users
 
 ### Permissions
