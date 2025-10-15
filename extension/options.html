@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CopiMon Options</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; padding: 16px; }
+      label { display:block; margin: 8px 0 4px; color:#444; }
+      input { width: 420px; max-width: 100%; padding:8px; }
+      .row { margin-bottom: 12px; }
+      button { padding: 8px 12px; }
+      small { color:#666; }
+    </style>
+  </head>
+  <body>
+    <h1>CopiMon Options</h1>
+    <div class="row">
+      <label>Server URL</label>
+      <input id="serverUrl" placeholder="http://localhost:3001" />
+      <div><small>Must allow CORS; WS is derived from this URL.</small></div>
+    </div>
+    <div class="row">
+      <label>Room ID</label>
+      <input id="roomId" placeholder="default" />
+    </div>
+    <button id="save">Save</button>
+
+    <script>
+      const DEFAULTS = { serverUrl: 'http://localhost:3001', roomId: 'default' };
+
+      function getSync(keys) { return new Promise(r => chrome.storage.sync.get(keys, r)); }
+      function setSync(obj) { return new Promise(r => chrome.storage.sync.set(obj, r)); }
+
+      (async function init(){
+        const cfg = await getSync(DEFAULTS);
+        document.getElementById('serverUrl').value = cfg.serverUrl;
+        document.getElementById('roomId').value = cfg.roomId;
+      })();
+
+      document.getElementById('save').addEventListener('click', async () => {
+        const serverUrl = document.getElementById('serverUrl').value.trim();
+        const roomId = document.getElementById('roomId').value.trim() || 'default';
+        await setSync({ serverUrl, roomId });
+        alert('Saved');
+      });
+    </script>
+  </body>
+  </html>
+
+
