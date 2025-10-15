@@ -20,6 +20,25 @@ function showToast(message) {
   setTimeout(() => toast.remove(), 1500);
 }
 
+function safeSendMessage(message, cb) {
+  try {
+    if (!chrome.runtime || !chrome.runtime.id) {
+      return cb && cb({});
+    }
+    chrome.runtime.sendMessage(message, (resp) => {
+      const lastErr = chrome.runtime && chrome.runtime.lastError;
+      if (lastErr && /Extension context invalidated/i.test(String(lastErr.message))) {
+        // Background reloaded; ignore
+        return cb && cb({});
+      }
+      cb && cb(resp || {});
+    });
+  } catch (e) {
+    // Ignore messaging errors
+    cb && cb({});
+  }
+}
+
 function createOverlay(items) {
   const overlay = document.createElement('div');
   overlay.id = 'copimon-overlay';
@@ -86,13 +105,13 @@ function closeOverlay() {
 async function openOverlay() {
   if (overlayOpen) return;
   overlayOpen = true;
-  chrome.runtime.sendMessage({ type: 'copimon.getItems' }, ({ items }) => {
+  safeSendMessage({ type: 'copimon.getItems' }, ({ items }) => {
     const overlay = createOverlay(items || []);
     document.documentElement.appendChild(overlay);
   });
   // Auto-refresh overlay list every 2s
   overlayRefreshTimer = setInterval(() => {
-    chrome.runtime.sendMessage({ type: 'copimon.getItems' }, ({ items }) => {
+    safeSendMessage({ type: 'copimon.getItems' }, ({ items }) => {
       const list = document.getElementById('copimon-list');
       if (!list || !Array.isArray(items)) return;
       list.innerHTML = '';
@@ -168,7 +187,7 @@ document.addEventListener('copy', () => {
     text = document.getSelection()?.toString() || '';
   } catch {}
   if (text) {
-    chrome.runtime.sendMessage({ type: 'copimon.copy', text });
+    safeSendMessage({ type: 'copimon.copy', text });
     showToast('Copied to CopiMon');
   }
 }, true);
