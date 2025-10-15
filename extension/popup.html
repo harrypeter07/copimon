@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CopiMon</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 10px; width: 340px; }
+      h1 { font-size: 14px; margin: 0 0 8px; color: #333; }
+      .row { display: flex; gap: 6px; margin-bottom: 8px; }
+      input { flex: 1; padding: 6px; }
+      button { padding: 6px 10px; }
+      .item { border: 1px solid #eee; border-radius: 6px; padding: 8px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
+      .actions { display: flex; gap: 6px; margin-top: 6px; }
+      .muted { color: #777; font-size: 12px; }
+      #items { max-height: 420px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>CopiMon</h1>
+    <div class="row">
+      <input id="serverUrl" placeholder="Server URL" />
+      <input id="roomId" placeholder="Room" />
+      <button id="save">Save</button>
+    </div>
+    <div id="status" class="muted"></div>
+    <div id="items"></div>
+    <script src="popup.js"></script>
+  </body>
+  </html>
+
+
