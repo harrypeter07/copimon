@@ -26,10 +26,30 @@ async function getHistory() {
   });
 }
 
+function buildWsUrl(serverUrl, roomId) {
+  try {
+    const url = new URL(serverUrl);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.pathname = '/ws';
+    url.search = `roomId=${encodeURIComponent(roomId)}`;
+    return url.toString();
+  } catch (e) {
+    console.error('CopiMon: invalid serverUrl', serverUrl, e);
+    return null;
+  }
+}
+
 function connectWS(serverUrl, roomId) {
-  const wsUrl = serverUrl.replace('http', 'ws') + `/ws?roomId=${encodeURIComponent(roomId)}`;
+  const wsUrl = buildWsUrl(serverUrl, roomId);
+  if (!wsUrl) return;
   try { if (ws) ws.close(); } catch {}
-  ws = new WebSocket(wsUrl);
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    console.error('CopiMon: WebSocket constructor failed', e);
+    scheduleReconnect();
+    return;
+  }
 
   ws.onopen = () => {
     // No-op
