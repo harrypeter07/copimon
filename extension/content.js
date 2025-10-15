@@ -125,17 +125,14 @@ document.addEventListener('copy', () => {
   }
 }, true);
 
-// Global key handler for Ctrl+V to open overlay instead of default paste list
+// Shortcut: Ctrl/Cmd + Shift + V opens overlay (does NOT override normal Ctrl/Cmd+V)
 document.addEventListener('keydown', (e) => {
   const isMac = navigator.platform.includes('Mac');
   const mod = isMac ? e.metaKey : e.ctrlKey;
-  if (mod && e.key.toLowerCase() === 'v') {
-    // Only intercept if no modifier besides ctrl/cmd
-    if (!e.shiftKey && !e.altKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      openOverlay();
-    }
+  if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    e.stopPropagation();
+    openOverlay();
   }
 });
 

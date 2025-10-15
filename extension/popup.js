@@ -42,8 +42,12 @@ async function renderItems() {
 }
 
 async function renderStatus() {
-  const { copiMonStatus = { state: 'unknown' } } = await getLocal({ copiMonStatus: { state: 'unknown' } });
-  document.getElementById('wsState').textContent = `WS: ${copiMonStatus.state}${copiMonStatus.lastError ? ' — ' + copiMonStatus.lastError : ''}`;
+  const bgStatus = await new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'copimon.getStatus' }, (resp) => resolve(resp?.status));
+  });
+  const localStatus = (await getLocal({ copiMonStatus: { state: 'unknown' } })).copiMonStatus;
+  const s = bgStatus || localStatus || { state: 'unknown' };
+  document.getElementById('wsState').textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
 }
 
 async function renderLogs() {
