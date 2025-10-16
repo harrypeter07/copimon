@@ -30,13 +30,19 @@ function getOrCreateRoom(roomId) {
 function broadcastToRoom(roomId, payload) {
   const room = rooms.get(roomId);
   if (!room) return;
+  let sent = 0;
   for (const ws of room.sockets) {
     if (ws.readyState === 1) {
-      ws.send(JSON.stringify(payload));
+      try {
+        ws.send(JSON.stringify(payload));
+        sent++;
+      } catch (e) {
+        log('error', 'broadcast failed', { error: e.message });
+      }
     }
   }
   if (payload?.type === 'new_item') {
-    log('info', 'broadcast', { roomId, id: payload.item?.id });
+    log('info', 'broadcast', { roomId, id: payload.item?.id, clients: sent });
   }
 }
 
@@ -61,7 +67,12 @@ function createItem(text) {
 }
 
 function saveItem(roomId, item) {
-  insertItemStmt.run(item.id, roomId, item.text, item.ts);
+  try {
+    insertItemStmt.run(item.id, roomId, item.text, item.ts);
+    log('info', 'item_saved', { roomId, id: item.id });
+  } catch (e) {
+    log('error', 'save_failed', { error: e.message });
+  }
 }
 
 function getLatest(roomId, limit = 100) {
@@ -70,8 +81,14 @@ function getLatest(roomId, limit = 100) {
 
 // REST endpoints
 app.get('/health', (_req, res) => {
-  log('info', 'health');
-  res.json({ ok: true });
+  log('info', 'health_check');
+  res.json({ ok: true, timestamp: Date.now() });
+});
+
+// Get server logs
+app.get('/logs', (_req, res) => {
+  log('info', 'logs_requested');
+  res.json({ logs: recentLogs.slice(0, 100) });
 });
 
 // Get latest history for a room
@@ -87,6 +104,7 @@ app.post('/rooms/:roomId/clipboard', (req, res) => {
   const { roomId } = req.params;
   const { text } = req.body || {};
   if (typeof text !== 'string' || text.length === 0) {
+    log('warn', 'invalid_text', { roomId });
     return res.status(400).json({ error: 'text is required' });
   }
   const item = createItem(text);
@@ -98,6 +116,7 @@ app.post('/rooms/:roomId/clipboard', (req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`copimon server listening on http://localhost:${PORT}`);
+  log('info', 'server_started', { port: PORT });
 });
 
 // WebSocket: ws://host/ws?roomId=xyz
@@ -119,12 +138,16 @@ wss.on('connection', (ws, request) => {
   const roomId = url.searchParams.get('roomId') || 'default';
   const room = getOrCreateRoom(roomId);
   room.sockets.add(ws);
-  try { if (typeof log === 'function') log('info', 'ws_open', { roomId, sockets: room.sockets.size }); } catch {}
+  log('info', 'ws_open', { roomId, sockets: room.sockets.size });
 
   // Send initial snapshot
-  const _items = getLatest(roomId, 100);
-  ws.send(JSON.stringify({ type: 'snapshot', roomId, items: _items }));
-  try { if (typeof log === 'function') log('info', 'ws_snapshot', { roomId, count: _items.length }); } catch {}
+  const items = getLatest(roomId, 100);
+  try {
+    ws.send(JSON.stringify({ type: 'snapshot', roomId, items }));
+    log('info', 'ws_snapshot', { roomId, count: items.length });
+  } catch (e) {
+    log('error', 'snapshot_failed', { error: e.message });
+  }
 
   ws.on('message', (data) => {
     try {
@@ -132,16 +155,20 @@ wss.on('connection', (ws, request) => {
       if (msg.type === 'new_item' && typeof msg.text === 'string' && msg.text.length > 0) {
         const item = createItem(msg.text);
         saveItem(roomId, item);
-        try { if (typeof log === 'function') log('info', 'new_item_ws', { roomId, id: item.id, len: item.text.length }); } catch {}
+        log('info', 'new_item_ws', { roomId, id: item.id, len: item.text.length });
         broadcastToRoom(roomId, { type: 'new_item', roomId, item });
       }
-    } catch {}
+    } catch (e) {
+      log('error', 'ws_message_error', { error: e.message });
+    }
   });
 
   ws.on('close', () => {
     room.sockets.delete(ws);
-    try { if (typeof log === 'function') log('info', 'ws_close', { roomId, sockets: room.sockets.size }); } catch {}
+    log('info', 'ws_close', { roomId, sockets: room.sockets.size });
+  });
+
+  ws.on('error', (err) => {
+    log('error', 'ws_error', { roomId, error: err.message });
   });
 });
-
-
