@@ -51,28 +51,38 @@ async function renderStatus() {
   const localStatus = (await getLocal({ copiMonStatus: { state: 'unknown' } })).copiMonStatus;
   const s = bgStatus || localStatus || { state: 'unknown' };
   const wsState = document.getElementById('wsState');
-  wsState.textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
-  wsState.classList.remove('connected', 'connecting', 'disconnected');
-  wsState.classList.add(s.state);
+  if (wsState) {
+    wsState.textContent = `WS: ${s.state}${s.lastError ? ' — ' + s.lastError : ''}`;
+    wsState.classList.remove('connected', 'connecting', 'disconnected');
+    wsState.classList.add(s.state);
+  }
 
   // Permissions
   const permWriteEl = document.getElementById('permWrite');
   const permReadEl = document.getElementById('permRead');
   try {
     const write = await navigator.permissions.query({ name: 'clipboard-write' });
-    permWriteEl.textContent = `clipboard-write: ${write.state}`;
-    permWriteEl.className = `badge ${write.state === 'granted' ? 'connected' : write.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+    if (permWriteEl) {
+      permWriteEl.textContent = `clipboard-write: ${write.state}`;
+      permWriteEl.className = `badge ${write.state === 'granted' ? 'connected' : write.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+    }
   } catch {
-    permWriteEl.textContent = 'clipboard-write: n/a';
-    permWriteEl.className = 'badge disconnected';
+    if (permWriteEl) {
+      permWriteEl.textContent = 'clipboard-write: n/a';
+      permWriteEl.className = 'badge disconnected';
+    }
   }
   try {
     const read = await navigator.permissions.query({ name: 'clipboard-read' });
-    permReadEl.textContent = `clipboard-read: ${read.state}`;
-    permReadEl.className = `badge ${read.state === 'granted' ? 'connected' : read.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+    if (permReadEl) {
+      permReadEl.textContent = `clipboard-read: ${read.state}`;
+      permReadEl.className = `badge ${read.state === 'granted' ? 'connected' : read.state === 'prompt' ? 'connecting' : 'disconnected'}`;
+    }
   } catch {
-    permReadEl.textContent = 'clipboard-read: n/a';
-    permReadEl.className = 'badge disconnected';
+    if (permReadEl) {
+      permReadEl.textContent = 'clipboard-read: n/a';
+      permReadEl.className = 'badge disconnected';
+    }
   }
 
   // Check if content script is active on current tab
@@ -80,15 +90,15 @@ async function renderStatus() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.id) {
       await chrome.tabs.sendMessage(tab.id, { type: 'copimon.ping' });
-      document.getElementById('contentState').textContent = 'content: active';
-      document.getElementById('contentState').className = 'badge connected';
+      const cs = document.getElementById('contentState');
+      if (cs) { cs.textContent = 'content: active'; cs.className = 'badge connected'; }
     } else {
-      document.getElementById('contentState').textContent = 'content: no-tab';
-      document.getElementById('contentState').className = 'badge disconnected';
+      const cs = document.getElementById('contentState');
+      if (cs) { cs.textContent = 'content: no-tab'; cs.className = 'badge disconnected'; }
     }
   } catch {
-    document.getElementById('contentState').textContent = 'content: inactive';
-    document.getElementById('contentState').className = 'badge disconnected';
+    const cs = document.getElementById('contentState');
+    if (cs) { cs.textContent = 'content: inactive'; cs.className = 'badge disconnected'; }
   }
 }
 
@@ -139,8 +149,11 @@ document.getElementById('save').addEventListener('click', async () => {
   const serverUrl = document.getElementById('serverUrl').value.trim();
   const roomId = document.getElementById('roomId').value.trim() || 'default';
   await setSync({ serverUrl, roomId });
-  document.getElementById('status').textContent = 'Saved';
-  setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
+  const statusEl = document.getElementById('statusMessage');
+  if (statusEl) {
+    statusEl.textContent = 'Saved';
+    setTimeout(() => { statusEl.textContent = ''; }, 1500);
+  }
 });
 
 document.getElementById('useCtrlVOverlay').addEventListener('change', async (e) => {
@@ -157,16 +170,25 @@ document.getElementById('requestClipboard').addEventListener('click', async () =
   try {
     await navigator.permissions?.query?.({ name: 'clipboard-write' });
     await navigator.clipboard?.writeText(''); // attempt a no-op write to prompt if needed
-    document.getElementById('status').textContent = 'Clipboard permission requested';
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = 'Clipboard permission requested';
   } catch {
-    document.getElementById('status').textContent = 'Clipboard request failed';
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = 'Clipboard request failed';
   }
-  setTimeout(() => { document.getElementById('status').textContent = ''; }, 1500);
+  const statusEl = document.getElementById('statusMessage');
+  if (statusEl) setTimeout(() => { statusEl.textContent = ''; }, 1500);
 });
 
 document.getElementById('clearLogs').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'copimon.clearLogs' });
   renderLogs();
+});
+
+// Reconnect button
+document.getElementById('reconnect').addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'copimon.reconnect' });
+  renderStatus();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
