@@ -198,11 +198,10 @@ document.addEventListener('copy', (e) => {
 }, true);
 
 // Also capture cuts
-document.addEventListener('cut', () => {
+document.addEventListener('cut', (e) => {
   let text = '';
-  try {
-    text = document.getSelection()?.toString() || '';
-  } catch {}
+  try { text = e.clipboardData?.getData('text/plain') || ''; } catch {}
+  if (!text) { try { text = document.getSelection()?.toString() || ''; } catch {} }
   if (text) {
     safeSendMessage({ type: 'copimon.copy', text });
     showToast('Copied to CopiMon');
