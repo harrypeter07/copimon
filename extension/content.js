@@ -273,6 +273,29 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse({ ok: true, clipboard: true });
     showToast('Copied');
     return true;
+  } else if (msg && msg.type === 'copimon.forceCopySelection') {
+    let text = '';
+    try { text = document.getSelection()?.toString() || ''; } catch {}
+    if (!text) {
+      const active = document.activeElement;
+      const isEditable = active && (active.isContentEditable || ['INPUT', 'TEXTAREA'].includes(active.tagName));
+      if (isEditable) {
+        try {
+          const val = active.value ?? '';
+          const start = active.selectionStart ?? 0;
+          const end = active.selectionEnd ?? val.length;
+          text = val.slice(start, end) || val;
+        } catch {}
+      }
+    }
+    if (text) {
+      safeSendMessage({ type: 'copimon.copy', text });
+      showToast('Copied to CopiMon');
+      sendResponse({ ok: true, text });
+    } else {
+      sendResponse({ ok: false, error: 'no-selection' });
+    }
+    return true;
   } else if (msg && msg.type === 'copimon.ping') {
     sendResponse({ ok: true });
     return true;
