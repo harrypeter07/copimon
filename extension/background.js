@@ -9,6 +9,7 @@ let ws;
 let reconnectTimer;
 let status = { state: 'disconnected', lastError: null };
 let logs = [];
+let sendQueue = [];
 
 function pushLog(message) {
   const entry = { ts: Date.now(), message };
@@ -73,6 +74,7 @@ function connectWS(serverUrl, roomId) {
   ws.onopen = () => {
     pushLog('WS connected');
     setStatus('connected');
+    flushQueue();
   };
 
   ws.onmessage = async (ev) => {
@@ -81,23 +83,72 @@ function connectWS(serverUrl, roomId) {
       if (msg.type === 'snapshot') {
         await setHistory(msg.items || []);
         pushLog(`Snapshot received: ${Array.isArray(msg.items) ? msg.items.length : 0} items`);
+        flushQueue();
       } else if (msg.type === 'new_item') {
         const items = await getHistory();
         const updated = [msg.item, ...items].slice(0, 100);
         await setHistory(updated);
         pushLog('New item received');
+        flushQueue();
       }
     } catch {}
   };
 
-  ws.onclose = () => { pushLog('WS closed'); setStatus('disconnected'); scheduleReconnect(); };
-  ws.onerror = (e) => { pushLog('WS error'); setStatus('disconnected', e?.message || 'ws error'); scheduleReconnect(); };
+  ws.onclose = (ev) => {
+    pushLog(`WS closed code=${ev?.code ?? 'n/a'} reason=${ev?.reason || 'n/a'}`);
+    setStatus('disconnected');
+    scheduleReconnect();
+  };
+  ws.onerror = (e) => {
+    pushLog('WS error');
+    setStatus('disconnected', e?.message || 'ws error');
+    scheduleReconnect();
+  };
 }
 
 async function scheduleReconnect() {
   const { serverUrl, roomId } = await getConfig();
   clearTimeout(reconnectTimer);
   reconnectTimer = setTimeout(() => connectWS(serverUrl, roomId), 2000);
+}
+
+async function flushQueue() {
+  if (!sendQueue.length) return;
+  try {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      while (sendQueue.length) {
+        const text = sendQueue.shift();
+        ws.send(JSON.stringify({ type: 'new_item', text }));
+        pushLog('Flushed queued item via WS');
+      }
+      return;
+    }
+  } catch (e) {
+    pushLog('Error flushing queue: ' + (e?.message || e));
+  }
+  // Try REST flush
+  const snapshot = [...sendQueue];
+  sendQueue = [];
+  for (const text of snapshot) {
+    try {
+      const { serverUrl, roomId } = await getConfig();
+      const resp = await fetch(`${serverUrl}/rooms/${encodeURIComponent(roomId)}/clipboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      pushLog(`Flushed queued item via REST: ${resp.ok ? 'ok' : 'fail ' + resp.status}`);
+      if (!resp.ok) {
+        // Put back if failed
+        sendQueue.unshift(text);
+        break;
+      }
+    } catch (e) {
+      pushLog('REST flush failed: ' + (e?.message || e));
+      sendQueue.unshift(text);
+      break;
+    }
+  }
 }
 
 async function pushClipboardText(text) {
@@ -110,13 +161,19 @@ async function pushClipboardText(text) {
       return;
     }
   } catch {}
-  // Fallback REST
+  // Queue and try REST immediately
+  sendQueue.push(text);
   const resp = await fetch(`${serverUrl}/rooms/${encodeURIComponent(roomId)}/clipboard`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   });
   pushLog(`Sent item via REST: ${resp.ok ? 'ok' : 'fail ' + resp.status}`);
+  if (resp.ok) {
+    // Remove one instance from queue
+    const idx = sendQueue.indexOf(text);
+    if (idx !== -1) sendQueue.splice(idx, 1);
+  }
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -149,6 +206,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     if (msg && msg.type === 'copimon.copy' && typeof msg.text === 'string') {
+      // Opportunistic connect when a copy arrives
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        const cfg = await getConfig();
+        connectWS(cfg.serverUrl, cfg.roomId);
+      }
       await pushClipboardText(msg.text);
       sendResponse({ ok: true });
       pushLog('Copy event captured from content');
