@@ -8,8 +8,10 @@
     "clipboardRead",
     "clipboardWrite",
     "scripting",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
+  "optional_host_permissions": ["<all_urls>"],
   "host_permissions": [
     "http://localhost:3001/*",
     "https://*/*",

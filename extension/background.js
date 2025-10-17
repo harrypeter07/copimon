@@ -152,6 +152,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       await pushClipboardText(msg.text);
       sendResponse({ ok: true });
       pushLog('Copy event captured from content');
+      chrome.storage.local.set({ copiMonLastCopyAt: Date.now(), copiMonLastCopyLen: msg.text.length });
     } else if (msg && msg.type === 'copimon.getItems') {
       const items = await getHistory();
       sendResponse({ items });
@@ -166,6 +167,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     } else if (msg && msg.type === 'copimon.reconnect') {
       const { serverUrl, roomId } = await getConfig();
       connectWS(serverUrl, roomId);
+      sendResponse({ ok: true });
+    } else if (msg && msg.type === 'copimon.testSend') {
+      const text = `Test ${new Date().toLocaleTimeString()}`;
+      await pushClipboardText(text);
       sendResponse({ ok: true });
     }
   })();

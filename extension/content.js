@@ -182,12 +182,15 @@ function pick(text) {
   showToast('Pasted');
 }
 
-// Capture copy events in page
-document.addEventListener('copy', () => {
+// Capture copy events in page (prefer event.clipboardData)
+document.addEventListener('copy', (e) => {
   let text = '';
   try {
-    text = document.getSelection()?.toString() || '';
+    text = e.clipboardData?.getData('text/plain') || '';
   } catch {}
+  if (!text) {
+    try { text = document.getSelection()?.toString() || ''; } catch {}
+  }
   if (text) {
     safeSendMessage({ type: 'copimon.copy', text });
     showToast('Copied to CopiMon');
@@ -234,7 +237,15 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Show a toast on paste as well to indicate action
-document.addEventListener('paste', () => {
+document.addEventListener('paste', (e) => {
+  let text = '';
+  try {
+    text = e.clipboardData?.getData('text/plain') || '';
+  } catch {}
+  if (text) {
+    // Capture pasted content as well, useful when copy happened elsewhere
+    safeSendMessage({ type: 'copimon.copy', text });
+  }
   showToast('Pasted');
 }, true);
 

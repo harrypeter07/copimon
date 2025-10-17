@@ -168,16 +168,42 @@ document.getElementById('refresh').addEventListener('click', async () => {
 
 document.getElementById('requestClipboard').addEventListener('click', async () => {
   try {
-    await navigator.permissions?.query?.({ name: 'clipboard-write' });
-    await navigator.clipboard?.writeText(''); // attempt a no-op write to prompt if needed
+    const write = await navigator.permissions?.query?.({ name: 'clipboard-write' });
+    const read = await navigator.permissions?.query?.({ name: 'clipboard-read' });
     const statusEl = document.getElementById('statusMessage');
-    if (statusEl) statusEl.textContent = 'Clipboard permission requested';
-  } catch {
+    if (statusEl) statusEl.textContent = `Permissions: write=${write?.state || 'n/a'}, read=${read?.state || 'n/a'} — requesting...`;
+    // Attempt a user-gesture write to prompt if needed
+    await navigator.clipboard?.writeText('');
+    // Attempt a read (some browsers require extra gesture)
+    try { await navigator.clipboard?.readText?.(); } catch {}
+    await renderStatus();
+    if (statusEl) statusEl.textContent = 'Clipboard permissions updated';
+  } catch (e) {
     const statusEl = document.getElementById('statusMessage');
-    if (statusEl) statusEl.textContent = 'Clipboard request failed';
+    if (statusEl) statusEl.textContent = `Clipboard request failed: ${e?.message || e}`;
   }
   const statusEl = document.getElementById('statusMessage');
-  if (statusEl) setTimeout(() => { statusEl.textContent = ''; }, 1500);
+  if (statusEl) setTimeout(() => { statusEl.textContent = ''; }, 2000);
+});
+// Enable extension on all sites via host permissions
+document.getElementById('enableAllSites').addEventListener('click', async () => {
+  try {
+    const granted = await chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] });
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = granted ? 'Enabled on all sites' : 'Permission denied';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+    renderStatus();
+  } catch {}
+});
+
+// Send a test item through background to server
+document.getElementById('sendTest').addEventListener('click', async () => {
+  try {
+    await chrome.runtime.sendMessage({ type: 'copimon.testSend' });
+    await renderStatus();
+    await renderLogs();
+    await renderItems();
+  } catch {}
 });
 
 document.getElementById('clearLogs').addEventListener('click', async () => {
