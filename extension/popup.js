@@ -206,6 +206,35 @@ document.getElementById('sendTest').addEventListener('click', async () => {
   } catch {}
 });
 
+// Force copy current page selection through content script
+document.getElementById('forceCopySel').addEventListener('click', async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    const resp = await chrome.tabs.sendMessage(tab.id, { type: 'copimon.forceCopySelection' });
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = resp?.ok ? 'Selection sent to server' : 'No selection';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+  } catch {}
+});
+
+// Try navigator.clipboard.readText under user gesture and send
+document.getElementById('tryReadText').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      await chrome.runtime.sendMessage({ type: 'copimon.copy', text });
+      const statusEl = document.getElementById('statusMessage');
+      if (statusEl) statusEl.textContent = 'Clipboard read and sent';
+      setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+    }
+  } catch (e) {
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = 'readText() not allowed on this page';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+  }
+});
+
 document.getElementById('clearLogs').addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'copimon.clearLogs' });
   renderLogs();
