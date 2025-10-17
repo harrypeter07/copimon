@@ -163,6 +163,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       logs = [];
       chrome.storage.local.set({ copiMonLogs: logs });
       sendResponse({ ok: true });
+    } else if (msg && msg.type === 'copimon.reconnect') {
+      const { serverUrl, roomId } = await getConfig();
+      connectWS(serverUrl, roomId);
+      sendResponse({ ok: true });
     }
   })();
   return true; // async
