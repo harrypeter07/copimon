@@ -191,6 +191,35 @@ document.getElementById('reconnect').addEventListener('click', async () => {
   renderStatus();
 });
 
+// Enable on this site: request host permissions
+document.getElementById('enableSite').addEventListener('click', async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return;
+    const origin = new URL(tab.url).origin + '/*';
+    const granted = await chrome.permissions.request({ origins: [origin] });
+    const statusEl = document.getElementById('statusMessage');
+    if (statusEl) statusEl.textContent = granted ? 'Enabled on this site' : 'Permission denied';
+    setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 1500);
+    renderStatus();
+  } catch {}
+});
+
+// Manually open overlay in current tab
+document.getElementById('openOverlay').addEventListener('click', async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const event = new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true });
+        document.dispatchEvent(event);
+      },
+    });
+  } catch {}
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.copiMonItems) {
     renderItems();
